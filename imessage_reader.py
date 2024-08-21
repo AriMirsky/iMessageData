@@ -77,7 +77,7 @@ def count_messages_by_person(db_location, name, start_date=datetime.datetime(200
     results = dict(results)
 
     x = list(range(int(start_date.timestamp()), int(end_date.timestamp()), 60*60))
-    y = list(map(lambda t: results[t - int(datetime.datetime(2001, 1, 1).timestamp())] if t - int(datetime.datetime(2001, 1, 1).timestamp()) in results else 0, x))
+    y = list(map(lambda t: results[t - int(datetime.datetime(2001, 1, 1).timestamp())] * 24 if t - int(datetime.datetime(2001, 1, 1).timestamp()) in results else 0, x))
     #print(y)
     y = smooth(y, smooth_hours)
     #print(y)
@@ -91,7 +91,7 @@ def count_messages_by_person(db_location, name, start_date=datetime.datetime(200
     y = y[first_nonzero:]
     ax.plot(list(map(lambda t: datetime.datetime.fromtimestamp(t), x)), y)
 
-    ax.set_ylabel('Texts Recieved Per Hour')
+    ax.set_ylabel('Texts Recieved Per Day')
     ax.set_title(f'Texts From {name} Over Time')
     ax.tick_params(axis='x', labelrotation=90)
     ax.set_ylim(0)

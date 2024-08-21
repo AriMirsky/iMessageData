@@ -33,6 +33,8 @@ def get_contact_plist_for_name(name):
     last_name = name.split(" ")[1]
     
     dirs = get_source_subdirs()
+
+    pls = []
     
     for dir in dirs:
         dir_path = dir + "/Metadata/"
@@ -46,14 +48,14 @@ def get_contact_plist_for_name(name):
                     contact_pl = get_contact_plist(contact_filepath)
                     if contact_pl is None:
                         print("[Err] Unable to get contact plist for", name)
-                        return None
+                        return []
                     try:
                         if contact_pl['First'] == first_name and contact_pl['Last'] == last_name:
-                            return contact_pl
+                            pls.append(contact_pl)
                     except:
                         ""
                         #print("[debug]No first or last name found for contact at path", contact_filepath)
-    return None
+    return pls
 
 def get_contact_plist_for_number(number):
     dirs = get_source_subdirs()
@@ -177,42 +179,32 @@ def get_name_for_number(number):
     return None
 
 def get_number_for_name(name):
-    pl = get_contact_plist_for_name(name)
-    if pl is not None:
-        try:
-            all_possible_numbers = []
-            for number in pl['Phone']['values']:
-                all_possible_numbers.extend(get_possible_numbers(number))
-            return all_possible_numbers
-        except:
-            pass
-        
-    else:
-        print("[Err] Unable to get phone number for", name)
-    return []
+    pls = get_contact_plist_for_name(name)
+    all_possible_numbers = []
+    for pl in pls:
+        if pl is not None:
+            try:
+                for number in pl['Phone']['values']:
+                    all_possible_numbers.extend(get_possible_numbers(number))
+            except:
+                pass
+    if all_possible_numbers == []:
+        print("Phone number not found for", name)
+    return all_possible_numbers
     
 def get_email_for_name(name):
-    pl = get_contact_plist_for_name(name)
-    if pl is not None:
-        try:
-            return pl['Email']['values']
-        except:
-            pass
-        
-    else:
-        print("[Err] Unable to get email for", name)
-    return []
-
-def get_address_for_name(name):
-    pl = get_contact_plist_for_name(name)
-    if pl is not None:
-        try:
-            return pl['Address']['values'][0]['Street']
-        except:
-            print("[Oof] Contact does not contain address information")
-    else:
-        print("[Err] Unable to get address for", name)
-        return None
+    pls = get_contact_plist_for_name(name)
+    all_possible_emails = []
+    for pl in pls:
+        if pl is not None:
+            try:
+                for emails in pl['Email']['values']:
+                    all_possible_emails.append(emails)
+            except:
+                pass
+    if all_possible_emails == []:
+        print("Email not found for", name)
+    return all_possible_emails
 
 def get_all_contacts():
     dirs = get_source_subdirs()

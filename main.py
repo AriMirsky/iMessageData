@@ -5,8 +5,4 @@ import datetime
 
 DB_LOCATION = '/Users/arimirsky/Documents/iMessageReader/chat.db'
 
-#messages = imessage_reader.read_messages(DB_LOCATION, 100, human_readable_date=False)
-#imessage_reader.print_messages(messages)
-
-#print(imessage_reader.count_messages_sent_by_number(DB_LOCATION, start_date=datetime.datetime.fromisoformat('2024-01-01')))
-imessage_reader.all_data(DB_LOCATION, start_date=datetime.datetime(2024, 7, 1), smooth_hours=24)
+imessage_reader.all_data(DB_LOCATION, smooth_hours=24*30)
