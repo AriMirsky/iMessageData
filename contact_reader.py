@@ -38,7 +38,7 @@ def get_contact_plist_for_name(name):
         dir_path = dir + "/Metadata/"
         if os.path.isdir(dir_path): # because some folders may not contain the Metadata folder
             directory = os.fsencode(dir_path)
-            print(dir_path, "is a dir")
+            #print(dir_path, "is a dir")
             for file in os.listdir(directory):
                 filename = os.fsdecode(file)
                 if filename.endswith(".abcdp"): 
@@ -88,7 +88,7 @@ def get_name_for_number_string(number):
         try:
             return get_name_from_plist(pl)
         except:
-            print("[Oof] Contact does not contain name information")
+            print("[Error] Contact does not contain name information")
 
 def get_possible_numbers(number):
     base_number = []
@@ -154,7 +154,7 @@ def get_name_for_email(email):
         try:
             return get_name_from_plist(pl)
         except:
-            print("[Oof] Contact does not contain name information")
+            print("[Error] Contact does not contain name information")
 
 def get_name_for_number(number):
     if number is None:
@@ -185,7 +185,7 @@ def get_number_for_name(name):
                 all_possible_numbers.extend(get_possible_numbers(number))
             return all_possible_numbers
         except:
-            print("[Oof] Contact does not contain phone number information")
+            pass
         
     else:
         print("[Err] Unable to get phone number for", name)
@@ -197,7 +197,7 @@ def get_email_for_name(name):
         try:
             return pl['Email']['values']
         except:
-            print("[Oof] Contact does not contain email information")
+            pass
         
     else:
         print("[Err] Unable to get email for", name)

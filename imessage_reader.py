@@ -6,6 +6,7 @@ import os
 import contact_reader
 import matplotlib.pyplot as plt
 import datetime
+import numpy as np
 
 def get_chat_mapping(db_location):
     conn = sqlite3.connect(db_location)
@@ -33,31 +34,38 @@ def get_chat_mapping(db_location):
 
     return mapping
 
-def count_messages_by_person(db_location, name, start_date=datetime.datetime(2020, 1, 1), end_date=datetime.datetime.today()):
+def all_data(db_location, max=None, start_date=datetime.datetime(2001, 1, 1), end_date=datetime.datetime.today(), smooth_hours=24):
+    name_counts = count_messages_sent_by_number(db_location, max, start_date, end_date)
+
+    for name, count in name_counts:
+        print(f'{name} sent {count} texts between {start_date} and {end_date}')
+        count_messages_by_person(db_location, name, start_date, end_date, smooth_hours)
+
+def count_messages_by_person(db_location, name, start_date=datetime.datetime(2001, 1, 1), end_date=datetime.datetime.today(), smooth_hours=24):
     conn = sqlite3.connect(db_location)
     cursor = conn.cursor()
 
-    if start_date is not None:
-        start_date_int = int(start_date.timestamp())*1000000000
-        mod_date = int(datetime.datetime.strptime('2001-01-01', '%Y-%m-%d').timestamp()) * 1000000000
-        new_date = int(start_date_int - mod_date)
-        print(start_date_int, mod_date, new_date)
+    mod_date = int(datetime.datetime(2001, 1, 1).timestamp()) * 1000000000
+    
+    start_date_int = int(start_date.timestamp())*1000000000
+    new_start_date = int(start_date_int - mod_date)
+
+    end_date_int = int(end_date.timestamp())*1000000000
+    new_end_date = int(end_date_int - mod_date)
 
     number = contact_reader.get_number_for_name(name)
-    print(number)
     possible_numbers = ','.join(map(lambda n: f'"{n}"',number))
     email = contact_reader.get_email_for_name(name)
     possible_emails = ','.join(map(lambda e: f'"{e}"',email))
 
     query = f"""
-    SELECT message.date / 1000000000 / 60 / 60 / 24 * 24 * 60 * 60, COUNT(*)
+    SELECT message.date / 1000000000 / 60 / 60 * 60 * 60, COUNT(*)
     FROM message
     LEFT JOIN handle ON message.handle_id = handle.ROWID
-    WHERE (handle.id IN ({possible_numbers}) or handle.id IN ({possible_emails})){f' AND message.date > {new_date}' if start_date is not None else ''}
-    GROUP BY message.date / 1000000000 / 60 / 60 / 24
-    ORDER BY message.date / 1000000000 / 60 / 60 / 24
+    WHERE (handle.id IN ({possible_numbers}) or handle.id IN ({possible_emails})) AND message.date > {new_start_date} AND message.date < {new_end_date}
+    GROUP BY message.date / 1000000000 / 60 / 60
+    ORDER BY message.date / 1000000000 / 60 / 60
     """
-    print(query)
 
     results = cursor.execute(query).fetchall()
     conn.close()
@@ -68,38 +76,52 @@ def count_messages_by_person(db_location, name, start_date=datetime.datetime(202
     fig, ax = plt.subplots()
     results = dict(results)
 
-    x = list(range(int(start_date.timestamp()), int(end_date.timestamp()), 60*60*24))
+    x = list(range(int(start_date.timestamp()), int(end_date.timestamp()), 60*60))
     y = list(map(lambda t: results[t - int(datetime.datetime(2001, 1, 1).timestamp())] if t - int(datetime.datetime(2001, 1, 1).timestamp()) in results else 0, x))
+    #print(y)
+    y = smooth(y, smooth_hours)
+    #print(y)
 
-    first_nonzero = y.index(next(filter(lambda yy: yy!=0, y)))
+    try:
+        first_nonzero = y.index(next(filter(lambda yy: yy!=0, y)))
+    except StopIteration:
+        print(f"No date found for {name} with query:\n{query}")
+        return [], []
     x = x[first_nonzero:]
     y = y[first_nonzero:]
     ax.plot(list(map(lambda t: datetime.datetime.fromtimestamp(t), x)), y)
 
-    ax.set_ylabel('Texts Recieved')
+    ax.set_ylabel('Texts Recieved Per Hour')
     ax.set_title(f'Texts From {name} Over Time')
     ax.tick_params(axis='x', labelrotation=90)
-    #ax.set_xticks('')
-    #ax.set_xticklabels([datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d') for t in x], rotation=45, ha='right')
+    ax.set_ylim(0)
 
     plt.show()
 
     return x, y
 
-def count_messages_sent_by_number(db_location, max=None, start_date=None):
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return list(y_smooth)
+
+def count_messages_sent_by_number(db_location, max=None, start_date=datetime.datetime(2001, 1, 1), end_date=datetime.datetime.today()):
     conn = sqlite3.connect(db_location)
     cursor = conn.cursor()
 
+    mod_date = int(datetime.datetime(2001, 1, 1).timestamp()) * 1000000000
+    
     start_date_int = int(start_date.timestamp())*1000000000
-    mod_date = int(datetime.datetime.strptime('2001-01-01', '%Y-%m-%d').timestamp()) * 1000000000
-    new_date = int(start_date_int - mod_date)
-    print(start_date_int, mod_date, new_date)
+    new_start_date = int(start_date_int - mod_date)
+
+    end_date_int = int(end_date.timestamp())*1000000000
+    new_end_date = int(end_date_int - mod_date)
 
     query = f"""
     SELECT handle.id, COUNT(*)
     FROM message
     LEFT JOIN handle ON message.handle_id = handle.ROWID
-    {f'WHERE message.date > {new_date}' if start_date is not None else ''}
+    WHERE message.date > {new_start_date} AND message.date < {new_end_date}
     GROUP BY handle.id
     """
 
