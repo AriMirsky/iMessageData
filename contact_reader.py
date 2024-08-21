@@ -180,13 +180,28 @@ def get_number_for_name(name):
     pl = get_contact_plist_for_name(name)
     if pl is not None:
         try:
-            return pl['Phone']['values']
+            all_possible_numbers = []
+            for number in pl['Phone']['values']:
+                all_possible_numbers.extend(get_possible_numbers(number))
+            return all_possible_numbers
         except:
             print("[Oof] Contact does not contain phone number information")
         
     else:
         print("[Err] Unable to get phone number for", name)
-        return None
+    return []
+    
+def get_email_for_name(name):
+    pl = get_contact_plist_for_name(name)
+    if pl is not None:
+        try:
+            return pl['Email']['values']
+        except:
+            print("[Oof] Contact does not contain email information")
+        
+    else:
+        print("[Err] Unable to get email for", name)
+    return []
 
 def get_address_for_name(name):
     pl = get_contact_plist_for_name(name)

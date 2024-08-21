@@ -33,6 +33,59 @@ def get_chat_mapping(db_location):
 
     return mapping
 
+def count_messages_by_person(db_location, name, start_date=datetime.datetime(2020, 1, 1), end_date=datetime.datetime.today()):
+    conn = sqlite3.connect(db_location)
+    cursor = conn.cursor()
+
+    if start_date is not None:
+        start_date_int = int(start_date.timestamp())*1000000000
+        mod_date = int(datetime.datetime.strptime('2001-01-01', '%Y-%m-%d').timestamp()) * 1000000000
+        new_date = int(start_date_int - mod_date)
+        print(start_date_int, mod_date, new_date)
+
+    number = contact_reader.get_number_for_name(name)
+    print(number)
+    possible_numbers = ','.join(map(lambda n: f'"{n}"',number))
+    email = contact_reader.get_email_for_name(name)
+    possible_emails = ','.join(map(lambda e: f'"{e}"',email))
+
+    query = f"""
+    SELECT message.date / 1000000000 / 60 / 60 / 24 * 24 * 60 * 60, COUNT(*)
+    FROM message
+    LEFT JOIN handle ON message.handle_id = handle.ROWID
+    WHERE (handle.id IN ({possible_numbers}) or handle.id IN ({possible_emails})){f' AND message.date > {new_date}' if start_date is not None else ''}
+    GROUP BY message.date / 1000000000 / 60 / 60 / 24
+    ORDER BY message.date / 1000000000 / 60 / 60 / 24
+    """
+    print(query)
+
+    results = cursor.execute(query).fetchall()
+    conn.close()
+
+    if end_date is None:
+        end_date = datetime.datetime.today()
+
+    fig, ax = plt.subplots()
+    results = dict(results)
+
+    x = list(range(int(start_date.timestamp()), int(end_date.timestamp()), 60*60*24))
+    y = list(map(lambda t: results[t - int(datetime.datetime(2001, 1, 1).timestamp())] if t - int(datetime.datetime(2001, 1, 1).timestamp()) in results else 0, x))
+
+    first_nonzero = y.index(next(filter(lambda yy: yy!=0, y)))
+    x = x[first_nonzero:]
+    y = y[first_nonzero:]
+    ax.plot(list(map(lambda t: datetime.datetime.fromtimestamp(t), x)), y)
+
+    ax.set_ylabel('Texts Recieved')
+    ax.set_title(f'Texts From {name} Over Time')
+    ax.tick_params(axis='x', labelrotation=90)
+    #ax.set_xticks('')
+    #ax.set_xticklabels([datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d') for t in x], rotation=45, ha='right')
+
+    plt.show()
+
+    return x, y
+
 def count_messages_sent_by_number(db_location, max=None, start_date=None):
     conn = sqlite3.connect(db_location)
     cursor = conn.cursor()
