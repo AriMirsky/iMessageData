@@ -79,18 +79,18 @@ def get_contact_plist_for_number(number):
                         #print("[debug]No first or last name found for contact at path", contact_filepath)
     return None
 
+def get_name_from_plist(pl):
+    return f"{pl['First'] + ' ' if 'First' in pl else ''}{pl['Last'] if 'Last' in pl else ''}"
+
 def get_name_for_number_string(number):
     pl = get_contact_plist_for_number(number)
     if pl is not None:
         try:
-            return f"{pl['First']} {pl['Last']}"
+            return get_name_from_plist(pl)
         except:
             print("[Oof] Contact does not contain name information")
 
-def get_name_for_number(number):
-    if number is None:
-        return None
-    
+def get_possible_numbers(number):
     base_number = []
     if len(number) == 10:
         base_number = number[:3], number[3:6], number[6:]
@@ -110,8 +110,8 @@ def get_name_for_number(number):
         # +1 (xxx) yyy-zzzz
         base_number = number[4:7], number[9:12], number[13:]
     else:
-        print(f"Couldn't parse {number}, sorry")
-        return number
+        #print(f"{number} is not a phone number")
+        return []
 
     possible_numbers = [
         f'{base_number[0]}{base_number[1]}{base_number[2]}',
@@ -121,14 +121,57 @@ def get_name_for_number(number):
         f'1 ({base_number[0]}) {base_number[1]}-{base_number[2]}',
         f'+1 ({base_number[0]}) {base_number[1]}-{base_number[2]}',
     ]
-    #print(base_number)
-    #print(possible_numbers)
+
+    return possible_numbers
+
+def get_contact_plist_for_email(email):
+    dirs = get_source_subdirs()
+    
+    for dir in dirs:
+        dir_path = dir + "/Metadata/"
+        if os.path.isdir(dir_path): # because some folders may not contain the Metadata folder
+            directory = os.fsencode(dir_path)
+            #print(dir_path, "is a dir")
+            for file in os.listdir(directory):
+                filename = os.fsdecode(file)
+                if filename.endswith(".abcdp"): 
+                    contact_filepath = os.path.join(dir_path, filename)
+                    contact_pl = get_contact_plist(contact_filepath)
+                    if contact_pl is None:
+                        print("[Err] Unable to get contact plist for", email)
+                        return None
+                    try:
+                        if email in contact_pl['Email']['values']:
+                            return contact_pl
+                    except:
+                        ""
+                        #print("[debug]No first or last name found for contact at path", contact_filepath)
+    return None
+
+def get_name_for_email(email):
+    pl = get_contact_plist_for_email(email)
+    if pl is not None:
+        try:
+            return get_name_from_plist(pl)
+        except:
+            print("[Oof] Contact does not contain name information")
+
+def get_name_for_number(number):
+    if number is None:
+        return None
+    
+    possible_numbers = get_possible_numbers(number)
 
     for attempted_number in possible_numbers:
         attempted_name = get_name_for_number_string(attempted_number)
-        #print(attempted_number, attempted_name)
         if attempted_name is not None:
+            print(f'{number} is {attempted_name}')
             return attempted_name
+    
+    attempted_name = get_name_for_email(number)
+    if attempted_name is not None:
+        print(f'{number} is {attempted_name}')
+        return attempted_name
         
     print("[Err] Unable to get name for", number)
     return None

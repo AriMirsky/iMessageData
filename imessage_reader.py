@@ -51,15 +51,18 @@ def count_messages_sent_by_number(db_location, max=None, start_date=None):
     """
 
     results = cursor.execute(query).fetchall()
-    named_results = []
+    named_results = {}
     for result in results:
         number, count = result
         name = contact_reader.get_name_for_number(number)
         if name is not None:
-            named_results.append((name, count))
+            if name in named_results:
+                named_results[name] += count
+            else:
+                named_results[name] = count
     conn.close()
 
-    sorted_results = sorted(named_results, key=lambda r: r[1], reverse=True)
+    sorted_results = sorted(named_results.items(), key=lambda r: r[1], reverse=True)
     if max is not None:
         sorted_results = sorted_results[:max]
     names = list(map(lambda r: r[0], sorted_results))
